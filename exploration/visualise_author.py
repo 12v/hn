@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import configparser
 
 # Read the SQL query from the .pgsql file
-with open("query.pgsql", "r") as file:
+with open("visualise_author.pgsql", "r") as file:
     query = file.read()
 
 # Read database configuration from the .ini file
