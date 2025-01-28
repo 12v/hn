@@ -47,7 +47,7 @@ class Tokeniser:
         self.inv_vocab_mapping = {idx: word for word, idx in self.vocab_mapping.items()}
 
     def _generate_vocab_mapping(self, corpus):
-        if os.path.exists(os.path.join(script_dir, "normalised_corpus.txt")):
+        if os.path.exists(os.path.join(script_dir, "../sources/normalised_corpus.txt")):
             with open(
                 os.path.join(script_dir, "../sources/normalised_corpus.txt"), "r"
             ) as f:
@@ -57,7 +57,9 @@ class Tokeniser:
             print("Normalising corpus...")
             corpus_tokens = self._normalise_text(corpus)
 
-        if not os.path.exists(os.path.join(script_dir, "normalised_corpus.txt")):
+        if not os.path.exists(
+            os.path.join(script_dir, "../sources/normalised_corpus.txt")
+        ):
             with open(
                 os.path.join(script_dir, "../sources/normalised_corpus.txt"), "w"
             ) as f:
@@ -71,7 +73,7 @@ class Tokeniser:
 
         all_tokens = set(special_tokens).union(frequent_tokens)
 
-        return {word: idx for idx, word in enumerate(all_tokens)}
+        return {word: idx for idx, word in enumerate(sorted(all_tokens))}
 
     def _save_vocab_mapping(self, vocab_mapping):
         with open(self.vocab_mapping_path, "w") as f:
