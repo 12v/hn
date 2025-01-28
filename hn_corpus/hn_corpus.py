@@ -3,47 +3,57 @@ import configparser
 import os
 import csv
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Read the SQL query from the .pgsql file
-with open(os.path.join(script_dir, "hn_corpus.pgsql"), "r") as file:
-    query = file.read()
+def build_hn_corpus():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Read database configuration from the .ini file
-config = configparser.ConfigParser()
-config.read(os.path.join(script_dir, "../database.ini"))
+    # Read the SQL query from the .pgsql file
+    with open(os.path.join(script_dir, "hn_corpus.pgsql"), "r") as file:
+        query = file.read()
 
-db_params = {
-    "dbname": config["postgresql"]["dbname"],
-    "user": config["postgresql"]["user"],
-    "password": config["postgresql"]["password"],
-    "host": config["postgresql"]["host"],
-}
+    # Read database configuration from the .ini file
+    config = configparser.ConfigParser()
+    config.read(os.path.join(script_dir, "../database.ini"))
 
-# Connect to your postgres DB
-conn = psycopg2.connect(**db_params)
+    db_params = {
+        "dbname": config["postgresql"]["dbname"],
+        "user": config["postgresql"]["user"],
+        "password": config["postgresql"]["password"],
+        "host": config["postgresql"]["host"],
+    }
 
-# Open a cursor to perform database operations
-cur = conn.cursor()
+    # Connect to your postgres DB
+    conn = psycopg2.connect(**db_params)
 
-# Execute the query
-cur.execute(query)
+    # Open a cursor to perform database operations
+    cur = conn.cursor()
 
-# Retrieve query results
-rows = cur.fetchall()
+    # Execute the query
+    cur.execute(query)
 
-# Close communication with the database
-cur.close()
-conn.close()
+    # Retrieve query results
+    rows = cur.fetchall()
 
-# write the output to a csv
-with open(os.path.join(script_dir, "../sources/hn_corpus.csv"), "w") as file:
-    csvwriter = csv.writer(file)
-    csvwriter.writerow(["title", "by", "time", "url", "score"])
-    for row in rows:
-        csvwriter.writerow(row)
+    # Close communication with the database
+    cur.close()
+    conn.close()
 
-# write titles to a .txt file
-with open(os.path.join(script_dir, "../sources/hn_title_corpus.txt"), "w") as file:
-    for row in rows:
-        file.write(f"{row[0]} ")
+    # create sources directory if it doesn't exist
+    if not os.path.exists(os.path.join(script_dir, "../sources")):
+        os.makedirs(os.path.join(script_dir, "../sources"))
+
+    # write the output to a csv
+    with open(os.path.join(script_dir, "../sources/hn_corpus.csv"), "w") as file:
+        csvwriter = csv.writer(file)
+        csvwriter.writerow(["title", "by", "time", "url", "score"])
+        for row in rows:
+            csvwriter.writerow(row)
+
+    # write titles to a .txt file
+    with open(os.path.join(script_dir, "../sources/hn_title_corpus.txt"), "w") as file:
+        for row in rows:
+            file.write(f"{row[0]} ")
+
+
+if __name__ == "__main__":
+    build_hn_corpus()

@@ -1,46 +1,73 @@
 import os
+from collections import Counter
+from nltk.stem import PorterStemmer
 import re
+
+script_dir = os.path.dirname(__file__)
+
+special_tokens = [
+    "<PAD>",
+    "<UNK>",
+    "<COMMA>",
+    "<PERIOD>",
+    "<QUOTE>",
+]
+
+# TODO: save Tokeniser config with the vocab_mapping
 
 
 class Tokeniser:
-    def __init__(self, corpus=None):
-        script_dir = os.path.dirname(__file__)
+    def __init__(self, corpus=None, min_freq: int = 3, use_stemming: bool = True):
+        self.min_freq = min_freq
+        self.use_stemming = use_stemming
+        self.word_counts = Counter()
+
+        self.stemmer = PorterStemmer()
+
         self.vocab_mapping_path = os.path.join(script_dir, "vocab_mapping.txt")
         self.vocab_mapping = None
         self.inv_vocab_mapping = None
-        self.pattern = re.compile(r"\b\w+\b")
+
+        self.special_char_re = re.compile(r'[^a-z0-9\s.,"]')
+
         self._initialise_vocab_mapping(corpus)
 
     def _initialise_vocab_mapping(self, corpus):
         # if corpus is provided then we want to generate a new vocabulary
         if corpus:
             self.vocab_mapping = self._generate_vocab_mapping(corpus)
+            self._save_vocab_mapping(self.vocab_mapping)
         # if corpus is not provided then use the pre-existing vocabulary
         else:
             self.vocab_mapping = self._read_vocab_mapping()
 
-        print("Vocabulary mapping:")
-        print(self.vocab_mapping)
-
         # generate the inverse mapping
         self.inv_vocab_mapping = {idx: word for word, idx in self.vocab_mapping.items()}
 
-        print("Inverse vocabulary mapping:")
-        print(self.inv_vocab_mapping)
-
     def _generate_vocab_mapping(self, corpus):
+        if os.path.exists(os.path.join(script_dir, "normalised_corpus.txt")):
+            with open(
+                os.path.join(script_dir, "../sources/normalised_corpus.txt"), "r"
+            ) as f:
+                corpus_tokens = f.read().split()
+        else:
+            corpus_tokens = self._normalise_text(corpus)
 
-        # TODO: make this better
+        if not os.path.exists(os.path.join(script_dir, "normalised_corpus.txt")):
+            with open(
+                os.path.join(script_dir, "../sources/normalised_corpus.txt"), "w"
+            ) as f:
+                f.write(" ".join(corpus_tokens))
 
-        vocab = set()
-        for text in corpus:
-            words = self.text_to_tokens(text)
-            vocab.update(words)
-        vocab_mapping = {word: idx for idx, word in enumerate(vocab)}
+        self.word_counts.update(corpus_tokens)
 
-        self._save_vocab_mapping(vocab_mapping)
+        frequent_tokens = {
+            word for word, count in self.word_counts.items() if count >= self.min_freq
+        }
 
-        return vocab_mapping
+        all_tokens = set(special_tokens).union(frequent_tokens)
+
+        return {word: idx for idx, word in enumerate(all_tokens)}
 
     def _save_vocab_mapping(self, vocab_mapping):
         with open(self.vocab_mapping_path, "w") as f:
@@ -54,15 +81,27 @@ class Tokeniser:
                 vocab_mapping[word.strip()] = idx
         return vocab_mapping
 
-    def text_to_tokens(self, text):
-        text = text.lower()
-        words = self.pattern.findall(text)
+    def _normalise_text(self, text):
+        text = text.lower()  # turn everything to lowercase
+        text = self.special_char_re.sub(" ", text)  # remove special characters
+        text = (
+            text.replace(",", " <COMMA> ")
+            .replace(".", " <PERIOD> ")
+            .replace('"', " <QUOTE> ")
+            .split()
+        )
 
-        # TODO: make this better!
-
-        # TODO: handle unknown words
+        if self.use_stemming:
+            words = [
+                self.stemmer.stem(word) if not word.startswith("<") else word
+                for word in text
+            ]
 
         return words
+
+    def text_to_tokens(self, text):
+        tokens = self._normalise_text(text)
+        return [token if token in self.vocab_mapping else "<UNK>" for token in tokens]
 
     def text_to_token_ids(self, text):
         words = self.text_to_tokens(text)
@@ -76,7 +115,7 @@ class Tokeniser:
 
 
 if __name__ == "__main__":
-    corpus = ["There are a lot of words in this corpus."]
+    corpus = "There are a lot of words in this corpus."
     text = "In this corpus there are words."
 
     def test_tokeniser(tokeniser):
@@ -90,8 +129,8 @@ if __name__ == "__main__":
         print("Reconstructed text:")
         print(reconstructed_text)
 
-    new_tokeniser = Tokeniser(corpus=corpus)
-    restored_tokeniser = Tokeniser()
+    new_tokeniser = Tokeniser(corpus=corpus, min_freq=1)
+    restored_tokeniser = Tokeniser(min_freq=1)
 
     test_tokeniser(new_tokeniser)
     print("-" * 50)
