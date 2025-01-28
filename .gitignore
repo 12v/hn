@@ -1,5 +1,6 @@
 database.ini
-hn_title_corpus/title_corpus.txt
+hn_corpus/hn_corpus.csv
+hn_corpus/hn_title_corpus.txt
 
 # General
 .DS_Store
