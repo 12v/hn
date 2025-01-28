@@ -29,6 +29,9 @@ class Tokeniser:
         print(self.inv_vocab_mapping)
 
     def _generate_vocab_mapping(self, corpus):
+
+        # TODO: make this better!
+
         vocab = set()
         for text in corpus:
             words = self.text_to_tokens(text)
