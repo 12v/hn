@@ -43,14 +43,20 @@ def build_hn_corpus():
         os.makedirs(os.path.join(script_dir, "../sources"))
 
     # write the output to a csv
-    with open(os.path.join(script_dir, "../sources/hn_corpus.csv"), "w") as file:
+    with open(
+        os.path.join(script_dir, "../sources/hn_corpus.csv"), "w", encoding="utf-8"
+    ) as file:
         csvwriter = csv.writer(file)
         csvwriter.writerow(["title", "by", "time", "url", "score"])
         for row in rows:
             csvwriter.writerow(row)
 
     # write titles to a .txt file
-    with open(os.path.join(script_dir, "../sources/hn_title_corpus.txt"), "w") as file:
+    with open(
+        os.path.join(script_dir, "../sources/hn_title_corpus.txt"),
+        "w",
+        encoding="utf-8",
+    ) as file:
         for row in rows:
             file.write(f"{row[0]} ")
 
