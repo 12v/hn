@@ -1,14 +1,17 @@
 import psycopg2
 import matplotlib.pyplot as plt
 import configparser
+import os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Read the SQL query from the .pgsql file
-with open("visualise_title_lengths.pgsql", "r") as file:
+with open(os.path.join(script_dir, "visualise_title_lengths.pgsql"), "r") as file:
     query = file.read()
 
 # Read database configuration from the .ini file
 config = configparser.ConfigParser()
-config.read("../database.ini")
+config.read(os.path.join(script_dir, "../database.ini"))
 
 db_params = {
     "dbname": config["postgresql"]["dbname"],
@@ -44,4 +47,8 @@ plt.ylabel("Frequency")
 plt.title("Length Distribution of Strings")
 plt.xticks(range(1, max(lengths) + 1))
 plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+plot_file = os.path.join(script_dir, "title_lengths_plot.png")
+plt.savefig(plot_file)
+
 plt.show()
