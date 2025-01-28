@@ -30,7 +30,7 @@ class Tokeniser:
 
     def _generate_vocab_mapping(self, corpus):
 
-        # TODO: make this better!
+        # TODO: make this better
 
         vocab = set()
         for text in corpus:
@@ -60,6 +60,8 @@ class Tokeniser:
 
         # TODO: make this better!
 
+        # TODO: handle unknown words
+
         return words
 
     def text_to_token_ids(self, text):
@@ -67,25 +69,30 @@ class Tokeniser:
         tokens = [self.vocab_mapping[word] for word in words]
         return tokens
 
+    def token_ids_to_text(self, token_ids):
+        words = [self.inv_vocab_mapping[token_id] for token_id in token_ids]
+        text = " ".join(words)
+        return text
+
 
 if __name__ == "__main__":
-    corpus = ["This is a test.", "This is another test."]
-    text = "This is test."
+    corpus = ["There are a lot of words in this corpus."]
+    text = "In this corpus there are words."
 
-    tokeniser = Tokeniser(corpus=corpus)
-    tokens = tokeniser.text_to_tokens(text)
-    token_ids = tokeniser.text_to_token_ids(text)
-    print("Tokens:")
-    print(tokens)
-    print("Token IDs:")
-    print(token_ids)
+    def test_tokeniser(tokeniser):
+        tokens = tokeniser.text_to_tokens(text)
+        token_ids = tokeniser.text_to_token_ids(text)
+        reconstructed_text = tokeniser.token_ids_to_text(token_ids)
+        print("Tokens:")
+        print(tokens)
+        print("Token IDs:")
+        print(token_ids)
+        print("Reconstructed text:")
+        print(reconstructed_text)
 
+    new_tokeniser = Tokeniser(corpus=corpus)
+    restored_tokeniser = Tokeniser()
+
+    test_tokeniser(new_tokeniser)
     print("-" * 50)
-
-    tokeniser = Tokeniser()
-    tokens = tokeniser.text_to_tokens(text)
-    token_ids = tokeniser.text_to_token_ids(text)
-    print("Tokens:")
-    print(tokens)
-    print("Token IDs:")
-    print(token_ids)
+    test_tokeniser(restored_tokeniser)
