@@ -35,10 +35,12 @@ class Tokeniser:
     def _initialise_vocab_mapping(self, corpus):
         # if corpus is provided then we want to generate a new vocabulary
         if corpus:
+            print("Generating new vocabulary mapping...")
             self.vocab_mapping = self._generate_vocab_mapping(corpus)
             self._save_vocab_mapping(self.vocab_mapping)
         # if corpus is not provided then use the pre-existing vocabulary
         else:
+            print("Reading existing vocabulary mapping...")
             self.vocab_mapping = self._read_vocab_mapping()
 
         # generate the inverse mapping
@@ -49,8 +51,10 @@ class Tokeniser:
             with open(
                 os.path.join(script_dir, "../sources/normalised_corpus.txt"), "r"
             ) as f:
+                print("Reading existing normalised corpus from file...")
                 corpus_tokens = f.read().split()
         else:
+            print("Normalising corpus...")
             corpus_tokens = self._normalise_text(corpus)
 
         if not os.path.exists(os.path.join(script_dir, "normalised_corpus.txt")):
