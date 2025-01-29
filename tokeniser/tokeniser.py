@@ -17,9 +17,9 @@ special_tokens = [
 
 
 class Tokeniser:
-    def __init__(self, corpus=None, min_freq: int = 3, use_stemming: bool = True):
-        self.min_freq = min_freq
-        self.use_stemming = use_stemming
+    def __init__(self, corpus=None):
+        self.min_freq = 10
+        self.use_stemming = True
         self.word_counts = Counter()
 
         self.stemmer = PorterStemmer()
@@ -114,6 +114,12 @@ class Tokeniser:
         tokens = [self.vocab_mapping[word] for word in words]
         return tokens
 
+    def tokens_to_token_ids(self, tokens):
+        return [
+            self.vocab_mapping[token] if token in self.vocab_mapping else "<UNK>"
+            for token in tokens
+        ]
+
     def token_ids_to_text(self, token_ids):
         words = [self.inv_vocab_mapping[token_id] for token_id in token_ids]
         text = " ".join(words)
@@ -135,8 +141,8 @@ if __name__ == "__main__":
         print("Reconstructed text:")
         print(reconstructed_text)
 
-    new_tokeniser = Tokeniser(corpus=corpus, min_freq=1)
-    restored_tokeniser = Tokeniser(min_freq=1)
+    new_tokeniser = Tokeniser(corpus=corpus)
+    restored_tokeniser = Tokeniser()
 
     test_tokeniser(new_tokeniser)
     print("-" * 50)
