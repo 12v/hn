@@ -1,5 +1,5 @@
 import os
-from tokeniser.tokeniser import Tokeniser
+from tokeniser import Tokeniser
 import urllib.request
 
 script_dir = os.path.dirname(os.path.abspath(__file__))

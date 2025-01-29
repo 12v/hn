@@ -58,11 +58,9 @@ class Tokeniser:
         return {word: idx for idx, word in enumerate(sorted(all_tokens))}
 
     def _normalise_corpuses(self, corpuses):
-        if os.path.exists(
-            os.path.join(script_dir, "../sources/normalised_corpuses.txt")
-        ):
+        if os.path.exists(os.path.join(script_dir, "sources/normalised_corpuses.txt")):
             with open(
-                os.path.join(script_dir, "../sources/normalised_corpuses.txt"), "r"
+                os.path.join(script_dir, "sources/normalised_corpuses.txt"), "r"
             ) as f:
                 print("Reading existing normalised corpus from file...")
                 combined_corpus_tokens = f.read().split()
@@ -76,7 +74,7 @@ class Tokeniser:
 
                 with open(
                     os.path.join(
-                        script_dir, "../sources/normalised_corpus_" + str(idx) + ".txt"
+                        script_dir, "sources/normalised_corpus_" + str(idx) + ".txt"
                     ),
                     "w",
                 ) as f:
@@ -86,7 +84,7 @@ class Tokeniser:
 
             print("Saving combined normalised corpuses to file...")
             with open(
-                os.path.join(script_dir, "../sources/normalised_corpuses.txt"), "w"
+                os.path.join(script_dir, "sources/normalised_corpuses.txt"), "w"
             ) as f:
                 f.write(" ".join(combined_corpus_tokens))
 
@@ -149,14 +147,14 @@ if __name__ == "__main__":
     # use this to regenerate corpus files and vocab mapping
 
     try:
-        with open(os.path.join(script_dir, "../sources/text8"), "r") as f:
+        with open(os.path.join(script_dir, "sources/text8"), "r") as f:
             text8_corpus = f.read()
     except FileNotFoundError:
         print("text8 not found, please download it and save it to sources/text8")
         exit()
 
     try:
-        with open(os.path.join(script_dir, "../sources/hn_title_corpus.txt"), "r") as f:
+        with open(os.path.join(script_dir, "sources/hn_title_corpus.txt"), "r") as f:
             hn_title_corpus = f.read()
     except FileNotFoundError:
         print(
