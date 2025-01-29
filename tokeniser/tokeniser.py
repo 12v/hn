@@ -15,7 +15,7 @@ special_tokens = [
 
 
 class Tokeniser:
-    def __init__(self, corpus=None):
+    def __init__(self, corpuses=None):
         self.min_freq = 10
         self.use_stemming = True
         self.word_counts = Counter()
@@ -28,13 +28,13 @@ class Tokeniser:
 
         self.special_char_re = re.compile(r'[^a-z0-9\s.,"]')
 
-        self._initialise_vocab_mapping(corpus)
+        self._initialise_vocab_mapping(corpuses)
 
-    def _initialise_vocab_mapping(self, corpus):
-        # if corpus is provided then we want to generate a new vocabulary
-        if corpus:
+    def _initialise_vocab_mapping(self, corpuses):
+        # if corpuses is provided then we want to generate a new vocabulary
+        if corpuses:
             print("Generating new vocabulary mapping...")
-            self.vocab_mapping = self._generate_vocab_mapping(corpus)
+            self.vocab_mapping = self._generate_vocab_mapping(corpuses)
             self._save_vocab_mapping(self.vocab_mapping)
         # if corpus is not provided then use the pre-existing vocabulary
         else:
@@ -44,24 +44,8 @@ class Tokeniser:
         # generate the inverse mapping
         self.inv_vocab_mapping = {idx: word for word, idx in self.vocab_mapping.items()}
 
-    def _generate_vocab_mapping(self, corpus):
-        if os.path.exists(os.path.join(script_dir, "../sources/normalised_corpus.txt")):
-            with open(
-                os.path.join(script_dir, "../sources/normalised_corpus.txt"), "r"
-            ) as f:
-                print("Reading existing normalised corpus from file...")
-                corpus_tokens = f.read().split()
-        else:
-            print("Normalising corpus...")
-            corpus_tokens = self._normalise_text(corpus)
-
-        if not os.path.exists(
-            os.path.join(script_dir, "../sources/normalised_corpus.txt")
-        ):
-            with open(
-                os.path.join(script_dir, "../sources/normalised_corpus.txt"), "w"
-            ) as f:
-                f.write(" ".join(corpus_tokens))
+    def _generate_vocab_mapping(self, corpuses):
+        corpus_tokens = self._normalise_corpuses(corpuses)
 
         self.word_counts.update(corpus_tokens)
 
@@ -72,6 +56,43 @@ class Tokeniser:
         all_tokens = set(special_tokens).union(frequent_tokens)
 
         return {word: idx for idx, word in enumerate(sorted(all_tokens))}
+
+    def _normalise_corpuses(self, corpuses):
+        if os.path.exists(
+            os.path.join(script_dir, "../sources/normalised_corpuses.txt")
+        ):
+            with open(
+                os.path.join(script_dir, "../sources/normalised_corpuses.txt"), "r"
+            ) as f:
+                print("Reading existing normalised corpus from file...")
+                combined_corpus_tokens = f.read().split()
+        else:
+            print("Normalising corpuses...")
+            combined_corpus_tokens = []
+            for idx, corpus in enumerate(corpuses):
+                print(f"Normalising corpus {idx}...")
+                corpus_tokens = self._normalise_text(corpus)
+                combined_corpus_tokens.extend(corpus_tokens)
+
+                with open(
+                    os.path.join(
+                        script_dir, "../sources/normalised_corpus_" + str(idx) + ".txt"
+                    ),
+                    "w",
+                ) as f:
+                    f.write(" ".join(corpus_tokens))
+
+                print("Normalised corpus saved to file.")
+
+            print("Saving combined normalised corpuses to file...")
+            with open(
+                os.path.join(script_dir, "../sources/normalised_corpuses.txt"), "w"
+            ) as f:
+                f.write(" ".join(combined_corpus_tokens))
+
+            print("Combined normalised corpuses saved to file.")
+
+        return combined_corpus_tokens
 
     def _save_vocab_mapping(self, vocab_mapping):
         with open(self.vocab_mapping_path, "w") as f:
@@ -125,19 +146,36 @@ class Tokeniser:
 
 
 if __name__ == "__main__":
+    # use this to regenerate corpus files and vocab mapping
+
+    try:
+        with open(os.path.join(script_dir, "../sources/text8"), "r") as f:
+            text8_corpus = f.read()
+    except FileNotFoundError:
+        print("text8 not found, please download it and save it to sources/text8")
+        exit()
+
+    try:
+        with open(os.path.join(script_dir, "../sources/hn_title_corpus.txt"), "r") as f:
+            hn_title_corpus = f.read()
+    except FileNotFoundError:
+        print(
+            "hn_title_corpus not found, please download it and save it to sources/hn_title_corpus.txt"
+        )
+        exit()
+
+    corpuses = [text8_corpus, hn_title_corpus]
+
+    tokeniser = Tokeniser(corpuses=corpuses)
+
     text = "In this corpus there are words."
 
-    def test_tokeniser(tokeniser):
-        tokens = tokeniser.text_to_tokens(text)
-        token_ids = tokeniser.text_to_token_ids(text)
-        reconstructed_text = tokeniser.token_ids_to_text(token_ids)
-        print("Tokens:")
-        print(tokens)
-        print("Token IDs:")
-        print(token_ids)
-        print("Reconstructed text:")
-        print(reconstructed_text)
-
-    tokeniser = Tokeniser()
-
-    test_tokeniser(tokeniser)
+    tokens = tokeniser.text_to_tokens(text)
+    token_ids = tokeniser.text_to_token_ids(text)
+    reconstructed_text = tokeniser.token_ids_to_text(token_ids)
+    print("Tokens:")
+    print(tokens)
+    print("Token IDs:")
+    print(token_ids)
+    print("Reconstructed text:")
+    print(reconstructed_text)
