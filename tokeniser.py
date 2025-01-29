@@ -133,7 +133,11 @@ class Tokeniser:
 
     def tokens_to_token_ids(self, tokens):
         return [
-            self.vocab_mapping[token] if token in self.vocab_mapping else "<UNK>"
+            (
+                self.vocab_mapping[token]
+                if token in self.vocab_mapping
+                else self.vocab_mapping["<UNK>"]
+            )
             for token in tokens
         ]
 
