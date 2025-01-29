@@ -7,7 +7,7 @@
     pip install -r requirements.txt
     ```
 
-2. Create `database.ini` with the following contents:
+1. Create `database.ini` with the following contents:
     ```ini
     [postgresql]
     dbname=XYZ
@@ -15,3 +15,4 @@
     password=XYZ
     host=XYZ
     ```
+1. Run `python train_embeddings.py`
