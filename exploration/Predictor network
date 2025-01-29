@@ -11,12 +11,14 @@ from numpy import array
 
 #Generating random data to test training
 data = {
-    "matrix": [np.random.rand(256, 1) for _ in range(10000)],
-    "score": np.random.rand(10000),
+    "embedding": [np.random.rand(256, 1) for _ in range(1000)],
+    "score": np.random.rand(1000),
     }
 dataframe = pd.DataFrame(data)
-
-class RandomDataset(Dataset):
+#
+#
+#Class DataPreparer prepares input data by taking embedding and scores
+class DataPreparer(Dataset):
     def __init__(self, dataframe):
         self.dataframe = dataframe
 
@@ -24,23 +26,25 @@ class RandomDataset(Dataset):
         return len(self.dataframe)
 
     def __getitem__(self, idx):
-        # Extract the matrix and score
-        matrix = self.dataframe.iloc[idx]["matrix"]
+        # Extract the embedding and score
+        embedding = self.dataframe.iloc[idx]["embedding"]
         score = self.dataframe.iloc[idx]["score"]
         
         # Convert to PyTorch tensors
-        matrix_tensor = torch.tensor(matrix, dtype=torch.float32).squeeze()  # Flatten to (256,)
+        embedding_tensor = torch.tensor(embedding, dtype=torch.float32).squeeze()  # Flatten to (256,)
         score_tensor = torch.tensor(score, dtype=torch.float32)
         
-        return matrix_tensor, score_tensor
+        return embedding_tensor, score_tensor
 
-# Create Dataset
-dataset = RandomDataset(dataframe)
-#DODGY
+# Create dataset object in correct formatting for input layer
+dataset = DataPreparer(dataframe)
+#
+#
 
 # Defining DataLoader
 dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 
+#Defines neural network and neural network architecture
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
@@ -67,7 +71,7 @@ epochs=20
 for epoch in range(epochs):
     epoch_loss = 0.0
     for batch in dataloader:
-        # Get the input matrix and target score
+        # Get the input embedding and target score
         inputs, targets = batch
         
         # Forward pass
@@ -83,11 +87,12 @@ for epoch in range(epochs):
 
     epoch_loss /= len(dataloader)
     epoch_losses.append(epoch_loss)
+#
+#
+#Plots graph of losses at each epoch
+def loss_plotter():
+    epochlist=list(range(1, epochs+1))
+    plt.plot(epochlist, epoch_losses)
+    plt.show()
 
-
-
-
-print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
-
-epoch_losses = [round(loss, 4) for loss in epoch_losses]
-epoch_losses
+loss_plotter()
