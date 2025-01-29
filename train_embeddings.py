@@ -24,6 +24,6 @@ corpus = text8_corpus + hn_title_corpus
 
 if not os.path.exists(os.path.join(script_dir, "./tokeniser/vocab_mapping.txt")):
     print("Vocab mapping not found, building it now...")
-    tokeniser = Tokeniser(corpus=corpus, min_freq=10)
+    tokeniser = Tokeniser(corpus=corpus)
 else:
-    tokeniser = Tokeniser(min_freq=10)
+    tokeniser = Tokeniser()
