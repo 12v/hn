@@ -13,8 +13,6 @@ special_tokens = [
     "<QUOTE>",
 ]
 
-# TODO: save Tokeniser config with the vocab_mapping
-
 
 class Tokeniser:
     def __init__(self, corpus=None):
@@ -127,7 +125,6 @@ class Tokeniser:
 
 
 if __name__ == "__main__":
-    corpus = "There are a lot of words in this corpus."
     text = "In this corpus there are words."
 
     def test_tokeniser(tokeniser):
@@ -141,9 +138,6 @@ if __name__ == "__main__":
         print("Reconstructed text:")
         print(reconstructed_text)
 
-    new_tokeniser = Tokeniser(corpus=corpus)
-    restored_tokeniser = Tokeniser()
+    tokeniser = Tokeniser()
 
-    test_tokeniser(new_tokeniser)
-    print("-" * 50)
-    test_tokeniser(restored_tokeniser)
+    test_tokeniser(tokeniser)
