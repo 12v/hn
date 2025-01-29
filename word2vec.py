@@ -5,14 +5,19 @@ from tokeniser import Tokeniser
 from torch.utils.data import DataLoader
 import time
 import wandb
-from cbow import CBOW, generate_cbow_pairs_from_tokens
-
-window_size = 2
-batch_size = 256
-embedding_dim = 100
-
+from dataset import generate_pairs_from_tokens
+import tqdm
 
 script_dir = os.path.dirname(__file__)
+
+window_size = 1
+batch_size = 512
+embedding_dim = 64
+epochs = 10
+arch = "cbow"
+# arch = "skipgram"
+initial_lr = 0.001
+
 
 tokeniser = Tokeniser()
 
@@ -20,30 +25,11 @@ vocab_size = len(tokeniser.vocab_mapping)
 
 torch.manual_seed(1989)
 
-wandb.init(
-    project="mlx6-word2vec",
-    config={
-        "learning_rate": 0.001,
-        "architecture": "CBOW",
-        "dataset": "text8",
-        "epochs": 10,
-    },
-)
-
-
 with open(os.path.join(script_dir, "sources/normalised_corpus_1.txt"), "r") as f:
     corpus = f.read()
 
-# corpus = " ".join(
-#     tokeniser.text_to_tokens(
-#         "one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five one two three four five "
-#     )
-# )
-dataset = generate_cbow_pairs_from_tokens(tokeniser, [corpus], window_size)
-print("Training data generated")
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-model = CBOW(vocab_size, embedding_dim)
+dataset = generate_pairs_from_tokens(tokeniser, corpus.split("\n"), window_size)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
@@ -52,89 +38,100 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device("cpu")
 
+
+class SkipGram(torch.nn.Module):
+    def __init__(self, voc, emb):
+        super().__init__()
+        self.emb = torch.nn.Embedding(num_embeddings=voc, embedding_dim=emb)
+        self.ffw = torch.nn.Linear(in_features=emb, out_features=voc, bias=False)
+        self.sig = torch.nn.Sigmoid()
+
+    def forward(self, inpt, trgs, rand):
+        emb = self.emb(inpt)
+        ctx = self.ffw.weight[trgs]
+        rnd = self.ffw.weight[rand]
+        out = torch.bmm(ctx, emb.unsqueeze(-1)).squeeze()
+        rnd = torch.bmm(rnd, emb.unsqueeze(-1)).squeeze()
+        out = self.sig(out)
+        rnd = self.sig(rnd)
+        pst = -out.log().mean()
+        ngt = -(1 - rnd + 10 ** (-3)).log().mean()
+        return pst + ngt
+
+
+class CBOW(nn.Module):
+    def __init__(self, vocab_size, embedding_dim):
+        super().__init__()
+        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
+        self.linear = nn.Linear(embedding_dim, vocab_size)
+
+    def forward(self, context):
+        embedded = self.embeddings(context)
+        embedded_mean = torch.mean(embedded, dim=1)
+        out = self.linear(embedded_mean)
+        return out
+
+
+wandb.init(
+    project="mlx6-word2vec",
+    config={
+        "learning_rate": initial_lr,
+        "architecture": arch,
+        "dataset": "text8",
+        "epochs": epochs,
+    },
+)
+
+
+if arch == "cbow":
+    model = CBOW(vocab_size, embedding_dim)
+elif arch == "skipgram":
+    model = SkipGram(vocab_size, embedding_dim)
+else:
+    raise ValueError(f"Unknown architecture: {arch}")
+
+print("param count:", sum(p.numel() for p in model.parameters()))
+
 model.to(device)
-criterion = nn.CrossEntropyLoss()
-optimiser = optim.Adam(model.parameters(), lr=0.001)
 
+optimiser = torch.optim.Adam(model.parameters(), lr=initial_lr)
 
-epochs = 10
 for epoch in range(epochs):
     print(f"Epoch {epoch + 1} started")
-    epoch_start_time = time.time()
-    total_loss = 0
-    total_batch_time = 0
-    batch_count = 0
+    prgs = tqdm.tqdm(dataloader, desc=f"Epoch {epoch+1}", leave=False)
 
-    for i, batch in enumerate(dataloader):
-        batch_start_time = time.time()
-        context, target = batch
-        context, target = context.to(device), target.to(device)
+    if arch == "cbow":
+        criterion = nn.CrossEntropyLoss()
 
-        optimiser.zero_grad()
-        logits = model(context)
-        loss = criterion(logits, target)
-        loss.backward()
-        optimiser.step()
+        for target, context in prgs:
+            batch_start_time = time.time()
+            context, target = context.to(device), target.to(device)
 
-        total_loss += loss.item()
+            optimiser.zero_grad()
+            logits = model(context)
+            loss = criterion(logits, target)
+            loss.backward()
+            optimiser.step()
 
-        batch_time = time.time() - batch_start_time
-        total_batch_time += batch_time
-        batch_count += 1
+            wandb.log({"loss": loss.item()})
+    elif arch == "skipgram":
+        for inpt, trgs in prgs:
+            inpt, trgs = inpt.to(device), trgs.to(device)
 
-        # Print every 100 batches
-        if (i + 1) % 100 == 0:
-            avg_batch_time = total_batch_time / batch_count
-            remaining_batches = len(dataloader) - (i + 1)
-            print(
-                f"\rBatches processed: {i + 1}/{len(dataloader)} | "
-                f"Batches remaining: {remaining_batches} | "
-                f"Avg time per batch: {avg_batch_time:.4f} sec | "
-                f"Current loss: {loss.item():.4f}",
-                end="",
-            )
-
-            wandb.log({"acc": loss.item(), "epoch": epoch + 1})
-
-        # Final print for the epoch summary
-    epoch_time = time.time() - epoch_start_time
-    print(
-        f"\nEpoch {epoch + 1}, Loss: {total_loss / len(dataloader):.4f}, Time per epoch: {epoch_time:.2f} seconds"
-    )
+            rand = torch.randint(0, len(words_to_ids), (inpt.size(0), 2)).to(device)
+            optimiser.zero_grad()
+            loss = model(inpt, trgs, rand)
+            loss.backward()
+            optimiser.step()
+            wandb.log({"loss": loss.item()})
+    else:
+        raise ValueError(f"Unknown architecture: {arch}")
 
 
-# embedding_dim = 50
-# learning_rate = 0.001
-# epochs = 100
-
-# model = CBOW(len(tokeniser.vocab_mapping), embedding_dim)
-# criterion = nn.CrossEntropyLoss()
-# optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-# for epoch in range(epochs):
-#     total_loss = 0
-#     for context, target in training_data:
-#         context_indices = torch.tensor(
-#             tokeniser.tokens_to_token_ids(context), dtype=torch.long
-#         )
-#         target_index = torch.tensor(
-#             tokeniser.text.to_token_ids(target), dtype=torch.long
-#         )
-
-#         outputs = model(context_indices)
-#         loss = criterion(outputs, target_index)
-
-#         optimizer.zero_grad()
-#         loss.backward()
-#         optimizer.step()
-
-#         total_loss += loss.item()
-
-#     if (epoch + 1) % 10 == 0:
-#         print(
-#             f"Epoch {epoch + 1}, Total loss: {total_loss}, Loss: {total_loss / len(training_data)}"
-#         )
-
-
-# if __name__ == "__main__":
-#     text = "word2vec is a popular model for word embeddings.  It is widely used in NLP"
+torch.save(model.state_dict(), os.path.join(script_dir, "weights.pt"))
+print("Uploading...")
+artifact = wandb.Artifact("model-weights", type="model")
+artifact.add_file("./weights.pt")
+wandb.log_artifact(artifact)
+print("Done!")
+wandb.finish()
