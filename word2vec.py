@@ -14,8 +14,8 @@ window_size = 1
 batch_size = 512
 embedding_dim = 64
 epochs = 10
-arch = "cbow"
-# arch = "skipgram"
+# arch = "cbow"
+arch = "skipgram"
 initial_lr = 0.001
 
 
@@ -42,33 +42,42 @@ else:
 class SkipGram(torch.nn.Module):
     def __init__(self, voc, emb):
         super().__init__()
-        self.emb = torch.nn.Embedding(num_embeddings=voc, embedding_dim=emb)
-        self.ffw = torch.nn.Linear(in_features=emb, out_features=voc, bias=False)
+        self.embeddings = torch.nn.Embedding(num_embeddings=voc, embedding_dim=emb)
+        self.linear = torch.nn.Linear(in_features=emb, out_features=voc, bias=False)
         self.sig = torch.nn.Sigmoid()
 
-    def forward(self, inpt, trgs, rand):
-        emb = self.emb(inpt)
-        ctx = self.ffw.weight[trgs]
-        rnd = self.ffw.weight[rand]
-        out = torch.bmm(ctx, emb.unsqueeze(-1)).squeeze()
-        rnd = torch.bmm(rnd, emb.unsqueeze(-1)).squeeze()
-        out = self.sig(out)
-        rnd = self.sig(rnd)
-        pst = -out.log().mean()
-        ngt = -(1 - rnd + 10 ** (-3)).log().mean()
-        return pst + ngt
+    def forward(self, center, context, rand):
+        embeddings = self.embeddings(center)
+        context_weights = self.linear.weight[context]
+        random_weights = self.linear.weight[rand]
+
+        context_dot_product = torch.bmm(
+            context_weights, embeddings.unsqueeze(-1)
+        ).squeeze()
+        random_dot_product = torch.bmm(
+            random_weights, embeddings.unsqueeze(-1)
+        ).squeeze()
+
+        result_activation = self.sig(context_dot_product)
+        random_activation = self.sig(random_dot_product)
+
+        positive_sampling_loss = -result_activation.log().mean()
+        negative_sampling_loss = -(1 - random_activation + 10 ** (-3)).log().mean()
+        return positive_sampling_loss + negative_sampling_loss
 
 
 class CBOW(nn.Module):
     def __init__(self, vocab_size, embedding_dim):
         super().__init__()
         self.embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.linear = nn.Linear(embedding_dim, vocab_size)
+        self.linear = nn.Linear(
+            in_features=embedding_dim, out_features=vocab_size, bias=False
+        )
 
     def forward(self, context):
-        embedded = self.embeddings(context)
-        embedded_mean = torch.mean(embedded, dim=1)
-        out = self.linear(embedded_mean)
+        embeddings = self.embeddings(context)
+        embeddings_mean = torch.mean(embeddings, dim=1)
+        out = self.linear(embeddings_mean)
         return out
 
 
@@ -103,26 +112,28 @@ for epoch in range(epochs):
     if arch == "cbow":
         criterion = nn.CrossEntropyLoss()
 
-        for target, context in prgs:
-            batch_start_time = time.time()
-            context, target = context.to(device), target.to(device)
+        for center, context in prgs:
+            center, context = center.to(device), context.to(device)
 
             optimiser.zero_grad()
             logits = model(context)
-            loss = criterion(logits, target)
+            loss = criterion(logits, center)
+
             loss.backward()
             optimiser.step()
 
             wandb.log({"loss": loss.item()})
     elif arch == "skipgram":
-        for inpt, trgs in prgs:
-            inpt, trgs = inpt.to(device), trgs.to(device)
+        for center, context in prgs:
+            center, context = center.to(device), context.to(device)
 
-            rand = torch.randint(0, len(words_to_ids), (inpt.size(0), 2)).to(device)
+            rand = torch.randint(0, vocab_size, (center.size(0), 2)).to(device)
             optimiser.zero_grad()
-            loss = model(inpt, trgs, rand)
+            loss = model(center, context, rand)
+
             loss.backward()
             optimiser.step()
+
             wandb.log({"loss": loss.item()})
     else:
         raise ValueError(f"Unknown architecture: {arch}")
