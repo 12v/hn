@@ -151,14 +151,14 @@ if __name__ == "__main__":
     # use this to regenerate corpus files and vocab mapping
 
     try:
-        with open(os.path.join(script_dir, "sources/text8"), "r") as f:
+        with open(os.path.join(script_dir, "sources/text8"), "r", encoding='utf-8') as f:
             text8_corpus = f.read()
     except FileNotFoundError:
         print("text8 not found, please download it and save it to sources/text8")
         exit()
 
     try:
-        with open(os.path.join(script_dir, "sources/hn_title_corpus.txt"), "r") as f:
+        with open(os.path.join(script_dir, "sources/hn_title_corpus.txt"), "r", encoding='utf-8') as f:
             hn_title_corpus = f.read()
     except FileNotFoundError:
         print(
