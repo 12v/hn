@@ -45,6 +45,19 @@ class Tokeniser:
         self.inv_vocab_mapping = {idx: word for word, idx in self.vocab_mapping.items()}
 
     def _generate_vocab_mapping(self, corpuses):
+        corpus_tokens = self._normalise_corpuses(corpuses)
+
+        self.word_counts.update(corpus_tokens)
+
+        frequent_tokens = {
+            word for word, count in self.word_counts.items() if count >= self.min_freq
+        }
+
+        all_tokens = set(special_tokens).union(frequent_tokens)
+
+        return {word: idx for idx, word in enumerate(sorted(all_tokens))}
+
+    def _normalise_corpuses(self, corpuses):
         if os.path.exists(
             os.path.join(script_dir, "../sources/normalised_corpuses.txt")
         ):
@@ -52,7 +65,7 @@ class Tokeniser:
                 os.path.join(script_dir, "../sources/normalised_corpuses.txt"), "r"
             ) as f:
                 print("Reading existing normalised corpus from file...")
-                corpus_tokens = f.read().split()
+                combined_corpus_tokens = f.read().split()
         else:
             print("Normalising corpuses...")
             combined_corpus_tokens = []
@@ -79,15 +92,7 @@ class Tokeniser:
 
             print("Combined normalised corpuses saved to file.")
 
-        self.word_counts.update(corpus_tokens)
-
-        frequent_tokens = {
-            word for word, count in self.word_counts.items() if count >= self.min_freq
-        }
-
-        all_tokens = set(special_tokens).union(frequent_tokens)
-
-        return {word: idx for idx, word in enumerate(sorted(all_tokens))}
+        return combined_corpus_tokens
 
     def _save_vocab_mapping(self, vocab_mapping):
         with open(self.vocab_mapping_path, "w") as f:
