@@ -8,6 +8,8 @@ import os
 import builtins
 import urllib.request
 
+print("Imported all packages")
+
 # 
 # 
 # 
@@ -18,16 +20,16 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 sources = {
     "text8": {
         "url": "https://huggingface.co/datasets/ardMLX/text8/resolve/main/text8",
-        "path": os.path.join(script_dir, "sources/text8"),
+        "path": os.path.join(script_dir, "text8"),
     },
     "hn_title_corpus": {
         "url": "https://huggingface.co/datasets/12v12v/mlx6-1/resolve/main/hn_title_corpus.txt",
-        "path": os.path.join(script_dir, "sources/hn_title_corpus.txt"),
+        "path": os.path.join(script_dir, "hn_title_corpus"),
     },
 }
 
 # Ensure the sources directory exists
-os.makedirs(os.path.join(script_dir, "sources"), exist_ok=True)
+os.makedirs(os.path.join(script_dir), exist_ok=True)
 
 # For each source, download the file if it doesn't exist
 for name, source in sources.items():
@@ -44,17 +46,17 @@ for name, source in sources.items():
 torch.manual_seed(42)
 
 # Combine text in text8 file with hn_title_corpus file. Assuming you have both in same directory to use either or combine them
-# with open("text8", "r") as f:
-    # text8 = f.read()
+with open("text8", "r") as f:
+    text8 = f.read()
 
 with open("hn_title_corpus", "r") as f:
     hn_title_corpus = f.read()
 
-# combined_text = text8 + " " + hn_title_corpus
+combined_text = text8 + " " + hn_title_corpus
 
-combined_text = hn_title_corpus
+# combined_text = hn_title_corpus
 
-
+print("combined_text_files")
 
 #
 #
