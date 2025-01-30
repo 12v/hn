@@ -1,9 +1,6 @@
 import torch
-from torch import nn, optim
 import os
 from tokeniser import Tokeniser
-from torch.utils.data import DataLoader
-import time
 import wandb
 from dataset import generate_pairs_from_tokens
 import tqdm
@@ -39,46 +36,42 @@ else:
     device = torch.device("cpu")
 
 
-class SkipGram(torch.nn.Module):
-    def __init__(self, voc, emb):
+class Word2Vec(torch.nn.Module):
+    def __init__(self, arch, voc, emb):
         super().__init__()
         self.embeddings = torch.nn.Embedding(num_embeddings=voc, embedding_dim=emb)
         self.linear = torch.nn.Linear(in_features=emb, out_features=voc, bias=False)
         self.sig = torch.nn.Sigmoid()
 
+        if arch in ["cbow", "skipgram"]:
+            self.arch = arch
+        else:
+            raise ValueError(f"Unknown architecture: {arch}")
+
     def forward(self, center, context, rand):
-        embeddings = self.embeddings(center)
-        context_weights = self.linear.weight[context]
+        input = center if self.arch == "skipgram" else context
+        output = context if self.arch == "skipgram" else center
+
+        input_embeddings = self.embeddings(input)
+        output_weights = self.linear.weight[output]
         random_weights = self.linear.weight[rand]
 
-        context_dot_product = torch.bmm(
-            context_weights, embeddings.unsqueeze(-1)
-        ).squeeze()
-        random_dot_product = torch.bmm(
-            random_weights, embeddings.unsqueeze(-1)
-        ).squeeze()
+        if self.arch == "skipgram":
+            input_embeddings = input_embeddings.unsqueeze(-1)
+        else:
+            output_weights = output_weights.unsqueeze(1)
+            random_weights = random_weights.unsqueeze(1)
+            input_embeddings = input_embeddings.permute(0, 2, 1)
 
-        result_activation = self.sig(context_dot_product)
+        dot_product = torch.bmm(output_weights, input_embeddings).squeeze()
+        random_dot_product = torch.bmm(random_weights, input_embeddings).squeeze()
+
+        activation = self.sig(dot_product)
         random_activation = self.sig(random_dot_product)
 
-        positive_sampling_loss = -result_activation.log().mean()
+        positive_sampling_loss = -activation.log().mean()
         negative_sampling_loss = -(1 - random_activation + 10 ** (-3)).log().mean()
         return positive_sampling_loss + negative_sampling_loss
-
-
-class CBOW(nn.Module):
-    def __init__(self, vocab_size, embedding_dim):
-        super().__init__()
-        self.embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.linear = nn.Linear(
-            in_features=embedding_dim, out_features=vocab_size, bias=False
-        )
-
-    def forward(self, context):
-        embeddings = self.embeddings(context)
-        embeddings_mean = torch.mean(embeddings, dim=1)
-        out = self.linear(embeddings_mean)
-        return out
 
 
 wandb.init(
@@ -91,14 +84,9 @@ wandb.init(
     },
 )
 
+model = Word2Vec(arch, vocab_size, embedding_dim)
 
-if arch == "cbow":
-    model = CBOW(vocab_size, embedding_dim)
-elif arch == "skipgram":
-    model = SkipGram(vocab_size, embedding_dim)
-else:
-    raise ValueError(f"Unknown architecture: {arch}")
-
+print(arch)
 print("param count:", sum(p.numel() for p in model.parameters()))
 
 model.to(device)
@@ -109,34 +97,24 @@ for epoch in range(epochs):
     print(f"Epoch {epoch + 1} started")
     prgs = tqdm.tqdm(dataloader, desc=f"Epoch {epoch+1}", leave=False)
 
-    if arch == "cbow":
-        criterion = nn.CrossEntropyLoss()
+    for center, context in prgs:
+        center, context = center.to(device), context.to(device)
 
-        for center, context in prgs:
-            center, context = center.to(device), context.to(device)
+        cbow_rand = torch.randint(0, vocab_size, (center.size(0),)).to(device)
+        skipgram_rand = torch.randint(0, vocab_size, (context.size(0), 2)).to(device)
 
-            optimiser.zero_grad()
-            logits = model(context)
-            loss = criterion(logits, center)
+        if arch == "cbow":
+            rand = cbow_rand
+        else:
+            rand = skipgram_rand
 
-            loss.backward()
-            optimiser.step()
+        optimiser.zero_grad()
+        loss = model(center, context, rand)
 
-            wandb.log({"loss": loss.item()})
-    elif arch == "skipgram":
-        for center, context in prgs:
-            center, context = center.to(device), context.to(device)
+        loss.backward()
+        optimiser.step()
 
-            rand = torch.randint(0, vocab_size, (center.size(0), 2)).to(device)
-            optimiser.zero_grad()
-            loss = model(center, context, rand)
-
-            loss.backward()
-            optimiser.step()
-
-            wandb.log({"loss": loss.item()})
-    else:
-        raise ValueError(f"Unknown architecture: {arch}")
+        wandb.log({"loss": loss.item()})
 
 
 torch.save(model.state_dict(), os.path.join(script_dir, "weights.pt"))
