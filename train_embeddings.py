@@ -1,6 +1,11 @@
 import os
 from tokeniser import Tokeniser
 import urllib.request
+import torch
+import wandb
+from dataset import generate_pairs_from_tokens
+import tqdm
+from word2vec import Word2Vec
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -37,18 +42,83 @@ for name, source in sources.items():
         urllib.request.urlretrieve(source["url"], source["path"])
         print(f"{name} downloaded and saved to {source['path']}")
 
+
+window_size = 1
+batch_size = 512
+embedding_dim = 64
+epochs = 10
+arch = "cbow"
+# arch = "skipgram"
+initial_lr = 0.001
+
+
 tokeniser = Tokeniser()
 
-text = "In this corpus there are words."
+vocab_size = len(tokeniser.vocab_mapping)
 
-tokens = tokeniser.text_to_tokens(text)
-token_ids = tokeniser.text_to_token_ids(text)
-reconstructed_text = tokeniser.token_ids_to_text(token_ids)
-print("Tokens:")
-print(tokens)
-print("Token IDs:")
-print(token_ids)
-print("Reconstructed text:")
-print(reconstructed_text)
+torch.manual_seed(1989)
 
-# To be continued!
+with open(os.path.join(script_dir, "sources/normalised_corpus_1.txt"), "r") as f:
+    corpus = f.read()
+
+dataset = generate_pairs_from_tokens(tokeniser, corpus.split("\n"), window_size)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True)
+
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
+
+
+wandb.init(
+    project="mlx6-word2vec",
+    config={
+        "learning_rate": initial_lr,
+        "architecture": arch,
+        "dataset": "text8",
+        "epochs": epochs,
+    },
+)
+
+model = Word2Vec(arch, vocab_size, embedding_dim)
+
+print(arch)
+print("param count:", sum(p.numel() for p in model.parameters()))
+
+model.to(device)
+
+optimiser = torch.optim.Adam(model.parameters(), lr=initial_lr)
+
+for epoch in range(epochs):
+    print(f"Epoch {epoch + 1} started")
+    prgs = tqdm.tqdm(dataloader, desc=f"Epoch {epoch+1}", leave=False)
+
+    for center, context in prgs:
+        center, context = center.to(device), context.to(device)
+
+        cbow_rand = torch.randint(0, vocab_size, (center.size(0),)).to(device)
+        skipgram_rand = torch.randint(0, vocab_size, (context.size(0), 2)).to(device)
+
+        if arch == "cbow":
+            rand = cbow_rand
+        else:
+            rand = skipgram_rand
+
+        optimiser.zero_grad()
+        loss = model(center, context, rand)
+
+        loss.backward()
+        optimiser.step()
+
+        wandb.log({"loss": loss.item()})
+
+
+torch.save(model.state_dict(), os.path.join(script_dir, "weights.pt"))
+print("Uploading...")
+artifact = wandb.Artifact("model-weights", type="model")
+artifact.add_file("./weights.pt")
+wandb.log_artifact(artifact)
+print("Done!")
+wandb.finish()
