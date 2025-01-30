@@ -2,6 +2,7 @@ import psycopg2
 import configparser
 import os
 import csv
+import re
 
 
 def build_hn_corpus():
@@ -57,8 +58,10 @@ def build_hn_corpus():
         "w",
         encoding="utf-8",
     ) as file:
+        regexp = re.compile(r"[^\S ]+")
         for row in rows:
-            file.write(f"{row[0]} ")
+            cleaned_title = regexp.sub(" ", row[0])
+            file.write(f"{cleaned_title}\n")
 
 
 if __name__ == "__main__":

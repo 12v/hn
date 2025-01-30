@@ -69,16 +69,20 @@ class Tokeniser:
             combined_corpus_tokens = []
             for idx, corpus in enumerate(corpuses):
                 print(f"Normalising corpus {idx}...")
-                corpus_tokens = self._normalise_text(corpus)
-                combined_corpus_tokens.extend(corpus_tokens)
+                corpus_tokens = []
+                for text in corpus:
+                    text_tokens = self._normalise_text(text)
+                    corpus_tokens.append(text_tokens)
+                    combined_corpus_tokens.extend(text_tokens)
 
                 with open(
                     os.path.join(
-                        script_dir, "sources/normalised_corpus_" + str(idx) + ".txt"
+                        script_dir, "sources/normalised_corpus_" + str(idx + 1) + ".txt"
                     ),
                     "w",
                 ) as f:
-                    f.write(" ".join(corpus_tokens))
+                    for line in corpus_tokens:
+                        f.write(" ".join(line) + "\n")
 
                 print("Normalised corpus saved to file.")
 
@@ -165,6 +169,9 @@ if __name__ == "__main__":
             "hn_title_corpus not found, please download it and save it to sources/hn_title_corpus.txt"
         )
         exit()
+
+    hn_title_corpus = hn_title_corpus.split("\n")
+    text8_corpus = text8_corpus.split("\n")
 
     corpuses = [text8_corpus, hn_title_corpus]
 
