@@ -46,7 +46,7 @@ for name, source in sources.items():
 window_size = 1
 batch_size = 512
 embedding_dim = 64
-epochs = 10
+epochs = 3
 arch = "cbow"
 # arch = "skipgram"
 initial_lr = 0.001
