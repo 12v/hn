@@ -10,60 +10,61 @@ import urllib.request
 
 print("Imported all packages")
 
-# 
-# 
-# 
-# Check and download corpus files in same directory as this script
+# # 
+# # 
+# # 
+# # Check and download corpus files in same directory as this script
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
+# script_dir = os.path.dirname(os.path.abspath(__file__))
 
-sources = {
-    "text8": {
-        "url": "https://huggingface.co/datasets/ardMLX/text8/resolve/main/text8",
-        "path": os.path.join(script_dir, "text8"),
-    },
-    "hn_title_corpus": {
-        "url": "https://huggingface.co/datasets/12v12v/mlx6-1/resolve/main/hn_title_corpus.txt",
-        "path": os.path.join(script_dir, "hn_title_corpus"),
-    },
-}
+# sources = {
+#     "text8": {
+#         "url": "https://huggingface.co/datasets/ardMLX/text8/resolve/main/text8",
+#         "path": os.path.join(script_dir, "text8"),
+#     },
+#     "hn_title_corpus": {
+#         "url": "https://huggingface.co/datasets/12v12v/mlx6-1/resolve/main/hn_title_corpus.txt",
+#         "path": os.path.join(script_dir, "hn_title_corpus"),
+#     },
+# }
 
-# Ensure the sources directory exists
-os.makedirs(os.path.join(script_dir), exist_ok=True)
+# # Ensure the sources directory exists
+# os.makedirs(os.path.join(script_dir), exist_ok=True)
 
-# For each source, download the file if it doesn't exist
-for name, source in sources.items():
-    if not os.path.exists(source["path"]):
-        print(f"{name} not found, downloading now...")
-        urllib.request.urlretrieve(source["url"], source["path"])
-        print(f"{name} downloaded and saved to {source['path']}")
+# # For each source, download the file if it doesn't exist
+# for name, source in sources.items():
+#     if not os.path.exists(source["path"]):
+#         print(f"{name} not found, downloading now...")
+#         urllib.request.urlretrieve(source["url"], source["path"])
+#         print(f"{name} downloaded and saved to {source['path']}")
 
 
+
+# #
+# #
+# #
+# torch.manual_seed(42)
+
+# # Combine text in text8 file with hn_title_corpus file. Assuming you have both in same directory to use either or combine them
+# with open("text8", "r") as f:
+#     text8 = f.read()
+
+# with open("hn_title_corpus", "r") as f:
+#     hn_title_corpus = f.read()
+
+# combined_text = text8 + " " + hn_title_corpus
+
+# # combined_text = hn_title_corpus
+
+# print("combined_text_files")
 
 #
 #
-#
-torch.manual_seed(42)
+r = requests.get("https://huggingface.co/datasets/ardMLX/text8/resolve/main/text8")
+with open("text8", "wb") as f: f.write(r.content)
+with open('text8') as f: text8: str = f.read()
 
-# Combine text in text8 file with hn_title_corpus file. Assuming you have both in same directory to use either or combine them
-with open("text8", "r") as f:
-    text8 = f.read()
-
-with open("hn_title_corpus", "r") as f:
-    hn_title_corpus = f.read()
-
-combined_text = text8 + " " + hn_title_corpus
-
-# combined_text = hn_title_corpus
-
-print("combined_text_files")
-
-#
-#
-# r = requests.get("https://huggingface.co/datasets/ardMLX/text8/resolve/main/text8")
-# with open("text8", "wb") as f: f.write(r.content)
-# with open('text8') as f: text8: str = f.read()
-
+combined_text = text8
 
 #
 #
@@ -154,16 +155,19 @@ class SkipGramFoo(torch.nn.Module):
 #
 #
 #
-args = (len(words_to_ids), 64, 2)
+initial_lr = 0.01
+arch = 'SkipGramFoo'
+args = (len(words_to_ids), 128, 2)
 mFoo = SkipGramFoo(*args)
 print('mFoo', sum(p.numel() for p in mFoo.parameters()))
-opFoo = torch.optim.Adam(mFoo.parameters(), lr=0.01)
+opFoo = torch.optim.Adam(mFoo.parameters(), lr=initial_lr)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 #
 #
 #
+epochs = 1
 windows = list(more_itertools.windowed(tokens, 3))
 inputs = [w[1] for w in windows]
 targets = [[w[0], w[2]] for w in windows]
@@ -176,9 +180,17 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=512, shuffle=True)
 #
 #
 #
-wandb.init(project='mlx6-word2vec', name='mFoo')
+wandb.init(project='mlx6-word2vec'
+           ,config={
+        "learning_rate": initial_lr,
+        "architecture": arch,
+        "dataset": "text8",
+        "epochs": epochs,
+    }
+           , name='mFoo',)
+
 mFoo.to(device)
-for epoch in range(1):
+for epoch in range(epochs):
   prgs = tqdm.tqdm(dataloader, desc=f"Epoch {epoch+1}", leave=False)
   for inpt, trgs in prgs:
     inpt, trgs = inpt.to(device), trgs.to(device)
