@@ -1,6 +1,8 @@
 database.ini
 sources
 wandb
+bes_embedding/text8
+bes_embedding/hn_title_corpus
 
 # General
 .DS_Store
