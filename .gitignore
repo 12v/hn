@@ -3,6 +3,8 @@ sources
 wandb
 bes_embedding/text8
 bes_embedding/hn_title_corpus
+app/appenv
+app/appvenv
 
 # General
 .DS_Store
