@@ -4,11 +4,15 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy the requirements file
-COPY app/requirements.txt .
-COPY app/main.py .
+COPY requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+COPY weights-text8-hn.pt .
+COPY vocab_mapping.txt .
+COPY model_weights.pth .
+COPY *.py .
 
 # Expose the port the app runs on
 EXPOSE 60606
