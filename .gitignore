@@ -5,6 +5,7 @@ bes_embedding/text8
 bes_embedding/hn_title_corpus
 app/appenv
 app/appvenv
+appvenv
 
 # General
 .DS_Store

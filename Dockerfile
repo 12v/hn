@@ -4,10 +4,14 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy the requirements file
-COPY requirements.txt .
+COPY app-requirements.txt .
+
+
+# Install torch first so it doesn't include CUDA
+RUN pip install --no-cache-dir torch --index-url=https://download.pytorch.org/whl/cpu
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r app-requirements.txt
 
 COPY weights-text8-hn.pt .
 COPY vocab_mapping.txt .
