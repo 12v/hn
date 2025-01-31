@@ -18,11 +18,10 @@
         {
             "label": "Deploy to remote server",
             "type": "shell",
-            "command": "ansible-playbook",
+            "command": "bash",
             "args": [
-                "-i",
-                "hosts",
-                "playbook.yml"
+                "-c",
+                "ansible-playbook -i hosts playbook.yml",
             ],
             "group": {
                 "kind": "build",

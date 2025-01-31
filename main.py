@@ -8,7 +8,9 @@ app = FastAPI()
 model = NeuralNetwork()
 
 with open("model_weights.pth", "rb") as f:
-    model.load_state_dict(torch.load(f, map_location=torch.device("cpu")))
+    model.load_state_dict(
+        torch.load(f, map_location=torch.device("cpu"), weights_only=True)
+    )
 
 model.eval()
 
