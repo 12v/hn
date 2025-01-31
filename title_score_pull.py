@@ -33,7 +33,7 @@ with psycopg2.connect(**db_params) as conn:
 
     where type = 'story'
     and title is not null
-    LIMIT 1000
+    LIMIT 100000
     """
 
 # Read directly into DataFrame 
@@ -63,14 +63,14 @@ df['count'] = df['title'].str.split().str.len()
 
 # Set up Word2Vec model parameters CHANGE TO MATCH YOUR weights.pt input
 arch = "skipgram"
-embedding_dim = 256
+embedding_dim = 64
 vocab_size = len(tokeniser.vocab_mapping)
 
 # Initialize the model
 model = Word2Vec(arch=arch, voc=vocab_size, emb=embedding_dim)
 
 # Load the saved weights
-with open("weights.pt", "rb") as f:
+with open("weights-text8-hn.pt", "rb") as f:
     model.load_state_dict(
         torch.load(f, map_location=torch.device("cpu"), weights_only=True)
     )
@@ -102,15 +102,15 @@ df['embeddings'] = df['token_ids'].apply(get_embeddings)
 # Drop any rows with null token_ids
 # df = df.dropna(subset=['token_ids']).replace('', np.nan).dropna()
 # Example output
-print(df[['title', 'embeddings']].head(2))
+#print(df[['title', 'embeddings']].head(2))
 
 # Check for rows with 0 count
-no_token_ids_rows = df[df['token_ids'].apply(len) == 0]
-if not no_token_ids_rows.empty:
-    print("Rows with 0 tokens found:")
-    print(no_token_ids_rows)
-else:
-    print("No rows with 0 tokens found.")
+# no_token_ids_rows = df[df['token_ids'].apply(len) == 0]
+# if not no_token_ids_rows.empty:
+#     print("Rows with 0 tokens found:")
+#     print(no_token_ids_rows)
+# else:
+#     print("No rows with 0 tokens found.")
 
 # # Print the shape of each dict in df.embeddings
 df['embedding_count'] = df['embeddings'].apply(lambda x: len(x))
@@ -133,7 +133,6 @@ df['mean_embedding_count'] = df['mean_embedding'].apply(lambda x: len(x))
 
 # Keep only the specified columns
 df = df[['id', 'title', 'score', 'author', 'mean_embedding']]
-
-print(df.head(2))
+df.to_pickle('hn_embedded.pkl')
 
 
