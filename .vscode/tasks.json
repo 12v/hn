@@ -40,7 +40,7 @@
             "group": {
                 "kind": "build",
             },
-            "detail": "Run the Ansible playbook to install Docker and start the container"
+            "detail": "Pull and run the latest container locally"
         }
     ]
 }
